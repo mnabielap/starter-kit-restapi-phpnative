@@ -1,0 +1,22 @@
+{
+    "name": "starter-kit/restapi-phpnative",
+    "description": "RESTful API Starter Kit using Native PHP",
+    "type": "project",
+    "license": "MIT",
+    "autoload": {
+        "psr-4": {
+            "App\\": "src/"
+        }
+    },
+    "require": {
+        "php": ">=7.4",
+        "ext-pdo": "*",
+        "ext-json": "*",
+        "vlucas/phpdotenv": "^5.5",
+        "firebase/php-jwt": "^6.8",
+        "phpmailer/phpmailer": "^6.8"
+    },
+    "scripts": {
+        "start": "php -S localhost:3000 -t public"
+    }
+}
