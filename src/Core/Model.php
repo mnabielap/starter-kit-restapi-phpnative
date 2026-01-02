@@ -8,14 +8,15 @@ use PDO;
 abstract class Model
 {
     protected static $table;
-    protected static $hidden = []; // Fields to hide in JSON (like password)
+    protected static $hidden = []; // Fields to hide in JSON
+    protected static $searchable = []; // Fields to search in 'all' scope
 
     protected static function getDB()
     {
         return Database::connect();
     }
 
-    // Filter output to hide sensitive fields (like toJSON plugin)
+    // Filter output to hide sensitive fields
     public static function filterOutput($record)
     {
         if (!$record) return null;
@@ -64,7 +65,7 @@ abstract class Model
         $stmt->execute();
         $result = $stmt->fetch();
         
-        return $result ? $result : null; // Return raw array (Native PHP)
+        return $result ? $result : null;
     }
 
     public static function findById($id)
@@ -109,20 +110,60 @@ abstract class Model
         $offset = ($page - 1) * $limit;
 
         // Build Where Clause
-        $whereClause = "1=1";
+        $whereSegments = ["1=1"];
         $params = [];
+
+        // 1. Handle Exact Filters (excluding special keys)
         foreach ($filter as $key => $value) {
+            if ($key === 'search' || $key === 'scope') continue;
+            
             if ($value !== null && $value !== '') {
-                // Simple exact match, can be expanded for LIKE
-                $whereClause .= " AND $key = :$key";
-                $params[$key] = $value;
+                $whereSegments[] = "$key = :filter_$key";
+                $params[":filter_$key"] = $value;
             }
         }
+
+        // 2. Handle Search
+        if (!empty($filter['search'])) {
+            $term = $filter['search'];
+            $scope = $filter['scope'] ?? 'all';
+            $searchSegments = [];
+
+            if ($scope === 'all') {
+                // Search in defined searchable fields
+                foreach (static::$searchable as $field) {
+                    $searchSegments[] = "$field LIKE :search_wild";
+                }
+                // Optionally search ID if term looks numeric
+                if (is_numeric($term)) {
+                    $searchSegments[] = "id = :search_exact";
+                    $params[':search_exact'] = $term;
+                }
+                $params[':search_wild'] = "%$term%";
+            } elseif ($scope === 'id') {
+                $searchSegments[] = "id = :search_exact";
+                $params[':search_exact'] = $term;
+            } else {
+                // Search in specific column
+                if (in_array($scope, static::$searchable)) {
+                    $searchSegments[] = "$scope LIKE :search_wild";
+                    $params[':search_wild'] = "%$term%";
+                }
+            }
+
+            if (!empty($searchSegments)) {
+                $whereSegments[] = "(" . implode(' OR ', $searchSegments) . ")";
+            }
+        }
+
+        $whereClause = implode(" AND ", $whereSegments);
 
         // Build Sort
         $sortParts = explode(':', $sortBy);
         $sortField = $sortParts[0];
         $sortOrder = isset($sortParts[1]) && strtolower($sortParts[1]) === 'desc' ? 'DESC' : 'ASC';
+
+        $orderByClause = "$sortField $sortOrder";
 
         // Count Query
         $countSql = "SELECT COUNT(*) as total FROM " . static::$table . " WHERE $whereClause";
@@ -131,11 +172,11 @@ abstract class Model
         $totalResults = (int)$stmt->fetch()['total'];
 
         // Data Query
-        $sql = "SELECT * FROM " . static::$table . " WHERE $whereClause ORDER BY $sortField $sortOrder LIMIT :limit OFFSET :offset";
+        $sql = "SELECT * FROM " . static::$table . " WHERE $whereClause ORDER BY $orderByClause LIMIT :limit OFFSET :offset";
         $stmt = self::getDB()->prepare($sql);
         
         foreach ($params as $key => $value) {
-            $stmt->bindValue(":$key", $value);
+            $stmt->bindValue($key, $value);
         }
         $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
         $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
@@ -146,7 +187,7 @@ abstract class Model
         // Filter hidden fields
         $results = array_map([static::class, 'filterOutput'], $results);
 
-        $totalPages = ceil($totalResults / $limit);
+        $totalPages = $limit > 0 ? ceil($totalResults / $limit) : 0;
 
         return [
             'results' => $results,

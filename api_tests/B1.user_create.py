@@ -1,37 +1,41 @@
 import sys
 import os
 import time
-
 sys.path.append(os.path.abspath(os.path.dirname(__file__)))
-import utils
+from utils import send_and_print, BASE_URL, load_config, save_config
 
-OUTPUT_FILE = f"{os.path.splitext(os.path.basename(__file__))[0]}.json"
+print("--- CREATE USER (ADMIN) ---")
 
-access_token = utils.load_config("access_token")
-
-if not access_token:
-    print("[ERROR] No access_token found. Run A2.auth_login.py first.")
+token = load_config("accessToken")
+if not token:
+    print("Error: No access token. Run A2.auth_login.py first.")
     sys.exit(1)
 
-# Unique data for new user
+# Unique email
 unique_id = int(time.time())
-payload = {
-    "name": f"Admin Created User {unique_id}",
-    "email": f"created_{unique_id}@example.com",
-    "password": "password123",
-    "role": "user" 
-}
+email = f"created_by_admin_{unique_id}@example.com"
 
+url = f"{BASE_URL}/users"
 headers = {
-    "Authorization": f"Bearer {access_token}"
+    "Authorization": f"Bearer {token}"
+}
+payload = {
+    "name": "Created Via Python",
+    "email": email,
+    "password": "password123",
+    "role": "user"
 }
 
-print("--- Creating User (Requires Admin Role) ---")
-
-utils.send_and_print(
-    url=f"{utils.BASE_URL}/users",
-    method="POST",
+response = send_and_print(
+    url=url,
     headers=headers,
+    method="POST",
     body=payload,
-    output_file=OUTPUT_FILE
+    output_file=f"{os.path.splitext(os.path.basename(__file__))[0]}.json"
 )
+
+if response.status_code == 201:
+    data = response.json()
+    # Save this ID to use in Get/Update/Delete scripts
+    save_config("target_user_id", data['id'])
+    print(f">>> User created with ID {data['id']}. ID saved to secrets.json for testing B3/B4/B5.")

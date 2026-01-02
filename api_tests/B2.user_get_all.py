@@ -1,29 +1,24 @@
 import sys
 import os
-
 sys.path.append(os.path.abspath(os.path.dirname(__file__)))
-import utils
+from utils import send_and_print, BASE_URL, load_config
 
-OUTPUT_FILE = f"{os.path.splitext(os.path.basename(__file__))[0]}.json"
+print("--- GET ALL USERS ---")
 
-access_token = utils.load_config("access_token")
-
-if not access_token:
-    print("[ERROR] No access_token found.")
+token = load_config("accessToken")
+if not token:
+    print("Error: No access token. Run A2.auth_login.py first.")
     sys.exit(1)
 
+# Query parameters: Page 1, Limit 10, Sort by created_at DESC
+url = f"{BASE_URL}/users?page=1&limit=10&sortBy=created_at:desc"
 headers = {
-    "Authorization": f"Bearer {access_token}"
+    "Authorization": f"Bearer {token}"
 }
 
-# Query params example
-query_params = "?limit=10&page=1"
-
-print("--- Getting All Users (Requires Admin Role) ---")
-
-utils.send_and_print(
-    url=f"{utils.BASE_URL}/users{query_params}",
-    method="GET",
+response = send_and_print(
+    url=url,
     headers=headers,
-    output_file=OUTPUT_FILE
+    method="GET",
+    output_file=f"{os.path.splitext(os.path.basename(__file__))[0]}.json"
 )

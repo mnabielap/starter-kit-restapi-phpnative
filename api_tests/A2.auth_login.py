@@ -1,47 +1,30 @@
 import sys
 import os
-
 sys.path.append(os.path.abspath(os.path.dirname(__file__)))
-import utils
+from utils import send_and_print, BASE_URL, save_config
 
-OUTPUT_FILE = f"{os.path.splitext(os.path.basename(__file__))[0]}.json"
+print("--- LOGGING IN (AS ADMIN) ---")
 
-# Admin
-email = "admin@example.com"
-password = "password123"
+url = f"{BASE_URL}/auth/login"
 
+# Using default admin credentials to ensure we have permissions for B* scripts
 payload = {
-    "email": email,
-    "password": password
+    "email": "admin@example.com", 
+    "password": "password123" 
 }
 
-print(f"--- Logging in as: {email} ---")
-
-response = utils.send_and_print(
-    url=f"{utils.BASE_URL}/auth/login",
+response = send_and_print(
+    url=url,
     method="POST",
     body=payload,
-    output_file=OUTPUT_FILE
+    output_file=f"{os.path.splitext(os.path.basename(__file__))[0]}.json"
 )
 
-data = response.json()
-
-if response.status_code == 200 and data:
-    # Extract Tokens and User ID
-    access_token = data.get("tokens", {}).get("access", {}).get("token")
-    refresh_token = data.get("tokens", {}).get("refresh", {}).get("token")
-    user_id = data.get("user", {}).get("id")
-
-    if access_token:
-        utils.save_config("access_token", access_token)
-        print("-> Saved 'access_token' to secrets.json")
-    
-    if refresh_token:
-        utils.save_config("refresh_token", refresh_token)
-        print("-> Saved 'refresh_token' to secrets.json")
-
-    if user_id:
-        utils.save_config("user_id", user_id)
-        print(f"-> Saved 'user_id' ({user_id}) to secrets.json")
+if response.status_code == 200:
+    data = response.json()
+    # Save tokens to secrets.json for subsequent requests
+    save_config("accessToken", data['tokens']['access']['token'])
+    save_config("refreshToken", data['tokens']['refresh']['token'])
+    print(">>> Login successful. Access and Refresh tokens saved.")
 else:
-    print("\n[FAIL] Login failed. Could not save tokens.")
+    print(">>> Login Failed.")

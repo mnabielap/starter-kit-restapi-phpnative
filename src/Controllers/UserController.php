@@ -31,6 +31,8 @@ class UserController
         $filter = [
             'name' => $request->getQuery('name'),
             'role' => $request->getQuery('role'),
+            'search' => $request->getQuery('search'),
+            'scope' => $request->getQuery('scope'),
         ];
 
         // Extract options

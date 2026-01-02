@@ -1,27 +1,28 @@
 import sys
 import os
-
 sys.path.append(os.path.abspath(os.path.dirname(__file__)))
-import utils
+from utils import send_and_print, BASE_URL, load_config
 
-OUTPUT_FILE = f"{os.path.splitext(os.path.basename(__file__))[0]}.json"
+print("--- GET ONE USER ---")
 
-access_token = utils.load_config("access_token")
-user_id = utils.load_config("user_id")
+token = load_config("accessToken")
+target_id = load_config("target_user_id")
 
-if not access_token or not user_id:
-    print("[ERROR] Missing access_token or user_id in secrets.json.")
+if not token:
+    print("Error: No access token. Run A2.auth_login.py first.")
+    sys.exit(1)
+if not target_id:
+    print("Error: No target User ID. Run B1.user_create.py first.")
     sys.exit(1)
 
+url = f"{BASE_URL}/users/{target_id}"
 headers = {
-    "Authorization": f"Bearer {access_token}"
+    "Authorization": f"Bearer {token}"
 }
 
-print(f"--- Getting User Details for ID: {user_id} ---")
-
-utils.send_and_print(
-    url=f"{utils.BASE_URL}/users/{user_id}",
-    method="GET",
+response = send_and_print(
+    url=url,
     headers=headers,
-    output_file=OUTPUT_FILE
+    method="GET",
+    output_file=f"{os.path.splitext(os.path.basename(__file__))[0]}.json"
 )

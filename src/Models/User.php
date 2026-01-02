@@ -11,6 +11,9 @@ class User extends Model
     // Fields to hide in JSON response
     protected static $hidden = ['password'];
 
+    // Fields available for generic search
+    protected static $searchable = ['name', 'email'];
+
     /**
      * Check if email is taken
      */
